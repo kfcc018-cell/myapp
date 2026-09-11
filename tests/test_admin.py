@@ -9,6 +9,17 @@ from admin_upload import create_item, prepare_image
 from streamlit.testing.v1 import AppTest
 
 class AdminTests(unittest.TestCase):
+    def test_edit_without_photo_and_soft_delete(self):
+        from admin_upload import delete_item
+        with patch('admin_upload.request', return_value=[{'id': 1}]) as db, patch('admin_upload.storage') as files:
+            create_item('Changed', None, 1)
+            self.assertEqual(db.call_args.kwargs['method'], 'PATCH')
+            self.assertEqual(db.call_args.args[1], {'content': 'Changed'})
+            files.assert_not_called()
+            delete_item(1)
+            self.assertIn('deleted_at', db.call_args.args[1])
+            self.assertEqual(db.call_args.kwargs['method'], 'PATCH')
+
     def test_statistics_without_starting_game(self):
         with patch('database.get_rankings', return_value=[]), patch('database.get_bosses') as candidates, patch('database.save_result') as save:
             app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / 'streamlit_app.py'))

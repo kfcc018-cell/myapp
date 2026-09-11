@@ -9,7 +9,7 @@ import base64
 import binascii
 
 from database import DatabaseError, get_bosses, get_rankings, save_result
-from admin_upload import create_item
+from admin_upload import create_item, list_items, delete_item
 
 ROOT = Path(__file__).resolve().parent
 GAMES = {}
@@ -45,9 +45,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Content-Length', str(len(body)))
             self.end_headers()
             self.wfile.write(body)
-        elif path == '/api/rankings':
+        elif path in ('/api/rankings', '/api/items'):
             try:
-                self.reply(get_rankings())
+                self.reply(list_items() if path == '/api/items' else get_rankings())
             except DatabaseError as exc:
                 self.reply({'error': str(exc)}, 503)
         else:
@@ -64,11 +64,15 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError('잘못된 요청입니다.')
             if self.path == '/api/items':
                 try:
+                    if data.get('action') == 'delete':
+                        delete_item(data.get('id'))
+                        self.reply({'success': True})
+                        return
                     content = data.get('content', '')
                     if not isinstance(content, str):
                         raise ValueError('항목 설명을 입력해주세요.')
-                    photo = base64.b64decode(data.get('photo', ''), validate=True)
-                    create_item(content, photo)
+                    photo = base64.b64decode(data['photo'], validate=True) if data.get('photo') else None
+                    create_item(content, photo, data.get('id'))
                 except (ValueError, binascii.Error) as exc:
                     self.reply({'error': str(exc)}, 400)
                     return

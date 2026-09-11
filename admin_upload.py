@@ -7,6 +7,8 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from PIL import Image, ImageOps, UnidentifiedImageError
 from database import DatabaseError, request, settings
+from datetime import datetime, timezone
+from urllib.parse import urlsplit, unquote
 
 BUCKET = 'boss-worldcup-images'
 MAX_BYTES = 5 * 1024 * 1024
@@ -40,10 +42,23 @@ def storage(path, method='GET', body=None, content_type='application/json'):
         return response.read()
 
 
-def create_item(content, raw):
+def create_item(content, raw, item_id=None):
     content = content.strip()
     if not 1 <= len(content) <= 200:
         raise ValueError('항목 설명은 1~200자로 입력해주세요.')
+    if item_id is not None:
+        item_id = valid_id(item_id)
+        try:
+            if not request(f'boss_worldcup_items?id=eq.{item_id}&deleted_at=is.null&select=id'):
+                raise ValueError('항목을 찾을 수 없습니다. 목록을 새로고침해주세요.')
+        except HTTPError as exc:
+            raise DatabaseError('항목을 조회하지 못했습니다.') from exc
+    if raw is None and item_id is not None:
+        try:
+            request(f'boss_worldcup_items?id=eq.{item_id}&deleted_at=is.null', {'content': content}, method='PATCH')
+            return
+        except HTTPError as exc:
+            raise DatabaseError('수정하지 못했습니다.') from exc
     photo = prepare_image(raw)
     filename = str(uuid4()) + '.jpg'
     try:
@@ -60,7 +75,35 @@ def create_item(content, raw):
                     raise
         storage('object/' + BUCKET + '/' + filename, 'POST', photo, 'image/jpeg')
         url, _ = settings()
-        request('boss_worldcup_items', {'content': content,
-                'img_filename': url + '/storage/v1/object/public/' + BUCKET + '/' + filename})
+        payload = {'content': content, 'img_filename': url + '/storage/v1/object/public/' + BUCKET + '/' + filename}
+        if item_id is None:
+            request('boss_worldcup_items', payload)
+        else:
+            request(f'boss_worldcup_items?id=eq.{item_id}&deleted_at=is.null', payload, method='PATCH')
     except (HTTPError, URLError, TimeoutError) as exc:
         raise DatabaseError('등록하지 못했습니다. 잠시 후 다시 시도해주세요.') from exc
+
+
+def valid_id(item_id):
+    if type(item_id) is not int or item_id <= 0:
+        raise ValueError('올바르지 않은 항목입니다.')
+    return item_id
+
+
+def list_items():
+    try:
+        rows = request('boss_worldcup_items?select=id,content,img_filename&deleted_at=is.null&order=id.desc')
+        for row in rows:
+            row['filename'] = unquote(urlsplit(row['img_filename']).path.rsplit('/', 1)[-1])
+        return rows
+    except HTTPError as exc:
+        raise DatabaseError('목록을 불러오지 못했습니다.') from exc
+
+
+def delete_item(item_id):
+    item_id = valid_id(item_id)
+    try:
+        request(f'boss_worldcup_items?id=eq.{item_id}&deleted_at=is.null',
+                {'deleted_at': datetime.now(timezone.utc).isoformat()}, method='PATCH')
+    except HTTPError as exc:
+        raise DatabaseError('삭제하지 못했습니다.') from exc

@@ -28,14 +28,14 @@ def settings():
     return url.rstrip('/'), key
 
 
-def request(path, data=None):
+def request(path, data=None, method=None):
     url, key = settings()
     headers = {'apikey': key, 'Content-Type': 'application/json'}
     if key.startswith('eyJ'):
         headers['Authorization'] = 'Bearer ' + key
     if data is not None:
         headers['Prefer'] = 'return=minimal'
-    req = Request(url + '/rest/v1/' + path, headers=headers,
+    req = Request(url + '/rest/v1/' + path, headers=headers, method=method,
                   data=json.dumps(data).encode() if data is not None else None)
     try:
         with urlopen(req, timeout=15) as response:
@@ -58,7 +58,7 @@ def image_url(value):
 
 def get_bosses():
     try:
-        rows = request('boss_worldcup_items?select=id,content,img_filename&order=id')
+        rows = request('boss_worldcup_items?select=id,content,img_filename&deleted_at=is.null&order=id')
     except HTTPError as exc:
         raise DatabaseError('후보를 불러오지 못했습니다. 서버 연결 설정을 확인해주세요.') from exc
     if len(rows) < 2:
