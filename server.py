@@ -33,10 +33,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split('?', 1)[0]
-        if path in ('/', '/index.html', '/app.js'):
-            body = (ROOT / ('app.js' if path == '/app.js' else 'index.html')).read_bytes()
+        if path in ('/', '/index.html', '/app.js', '/stats.css'):
+            filename = path.lstrip('/') or 'index.html'
+            body = (ROOT / filename).read_bytes()
             self.send_response(200)
-            self.send_header('Content-Type', 'text/javascript; charset=utf-8' if path == '/app.js' else 'text/html; charset=utf-8')
+            content_type = 'text/css' if path == '/stats.css' else 'text/javascript' if path == '/app.js' else 'text/html'
+            self.send_header('Content-Type', content_type + '; charset=utf-8')
             self.send_header('Content-Length', str(len(body)))
             self.end_headers()
             self.wfile.write(body)

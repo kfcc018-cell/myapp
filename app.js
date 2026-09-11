@@ -39,13 +39,25 @@ async function statistics() {
     $('restart').disabled = false;
     $('statsStatus').textContent = '저장 완료 · 통계 불러오는 중…';
     const rows = await api('/api/rankings');
+    rows.sort((a, b) => b.win_count - a.win_count || a.winner_id - b.winner_id);
+    const maximum = Math.max(0, ...rows.map(row => row.win_count));
     $('statsBody').replaceChildren();
+    if (!maximum) {
+      const empty = document.createElement('p');
+      empty.textContent = '아직 집계된 우승 기록이 없습니다.';
+      $('statsBody').append(empty);
+    }
     for (const row of rows) {
-      const tr = document.createElement('tr');
-      for (const value of [row.content, row.win_count, row.win_percentage + '%']) {
-        const td = document.createElement('td'); td.textContent = value; tr.append(td);
-      }
-      $('statsBody').append(tr);
+      const item = document.createElement('div'); item.className = 'ranking-row'; item.setAttribute('role', 'listitem');
+      const label = document.createElement('div'); label.className = 'ranking-label';
+      const name = document.createElement('span'); name.textContent = row.content;
+      const value = document.createElement('strong');
+      value.textContent = `${row.win_count.toLocaleString()}회 · ${Number(row.win_percentage).toFixed(2)}%`;
+      label.append(name, value);
+      const track = document.createElement('div'); track.className = 'ranking-track'; track.setAttribute('aria-hidden', 'true');
+      const bar = document.createElement('div'); bar.className = 'ranking-bar';
+      bar.style.width = `${maximum ? row.win_count / maximum * 100 : 0}%`;
+      track.append(bar); item.append(label, track); $('statsBody').append(item);
     }
     $('statsStatus').textContent = `저장 완료 · 누적 ${rows.reduce((n, r) => n + r.win_count, 0)}게임`;
     $('stats').hidden = false;

@@ -24,7 +24,7 @@ class IntegrationTests(unittest.TestCase):
                 self.assertFalse(app.exception)
             self.assertTrue(app.session_state['saved'])
             save.assert_called_once_with(game_id, app.session_state['champion']['id'])
-            self.assertEqual(len(app.dataframe), 1)
+            self.assertTrue(any('ranking-chart' in m.value for m in app.markdown))
             app.button[0].click().run()
             save.assert_called_once()
             app.button[1].click().run()

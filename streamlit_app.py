@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import streamlit as st
 from database import DatabaseError, get_bosses, get_rankings, save_result
+from ranking_chart import ranking_chart
 
 st.set_page_config(page_title='최악의 직장상사 월드컵', page_icon='🏆', layout='centered')
 
@@ -66,9 +67,8 @@ if s.champion:
     try:
         rankings = get_rankings()
         st.metric('누적 완료 게임', sum(row['win_count'] for row in rankings))
-        st.dataframe([{'상사 유형': r['content'], '우승 횟수': r['win_count'],
-                       '우승 비율 (%)': float(r['win_percentage'])} for r in rankings],
-                     hide_index=True, use_container_width=True)
+        st.caption('우승 횟수 순 · 막대 길이는 최다 우승 횟수 기준 · 비율은 전체 완료 게임 기준')
+        st.markdown(ranking_chart(rankings), unsafe_allow_html=True)
     except DatabaseError as exc:
         st.error(str(exc))
     st.button('통계 새로고침')

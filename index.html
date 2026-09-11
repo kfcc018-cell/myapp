@@ -15,6 +15,7 @@
 .selection-badge{display:block;color:#cfbdff;font-weight:700;margin-top:18px}
 @media(max-width:540px){.choices.picked-left,.choices.picked-right{grid-template-columns:1fr}.picked-left #left,.picked-right #right{transform:scale(1.035)}}
 @media(prefers-reduced-motion:reduce){.choices,.choice{transition:none}}</style>
+<link rel="stylesheet" href="/stats.css">
 </head>
 <body><main>
 <div class="tag">OFFICE WORLD CUP</div>
@@ -27,7 +28,7 @@
 <section id="result" hidden aria-label="최종 결과">
 <div class="winner" id="winner"></div>
 <h2>전체 우승 통계</h2><p id="statsStatus" role="status"></p>
-<div id="stats" hidden style="overflow-x:auto"><table style="width:100%;text-align:left;line-height:2"><thead><tr><th>상사 유형</th><th>우승 횟수</th><th>우승 비율</th></tr></thead><tbody id="statsBody"></tbody></table></div>
+<div id="stats" hidden><p>우승 횟수 순 · 막대 길이는 최다 우승 횟수 기준 · 비율은 전체 완료 게임 기준</p><div id="statsBody" class="ranking-chart" role="list" aria-label="우승 횟수 순위"></div></div>
 <button id="refresh" class="primary">저장 재시도 / 통계 새로고침</button>
 <button id="restart" class="primary">다시 하기 ↻</button>
 </section>
