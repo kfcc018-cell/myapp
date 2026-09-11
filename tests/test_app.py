@@ -20,23 +20,23 @@ class IntegrationTests(unittest.TestCase):
             self.assertEqual(len(app.session_state['current']), 8)
             self.assertEqual(len({b['id'] for b in app.session_state['current']}), 8)
             for _ in range(7):
-                app.button[1].click().run()
+                app.button[2].click().run()
                 self.assertFalse(app.exception)
             self.assertTrue(app.session_state['saved'])
             save.assert_called_once_with(game_id, app.session_state['champion']['id'])
             self.assertTrue(any('ranking-chart' in m.value for m in app.markdown))
-            app.button[1].click().run()
-            save.assert_called_once()
             app.button[2].click().run()
+            save.assert_called_once()
+            app.button[3].click().run()
             self.assertNotEqual(app.session_state['game_id'], game_id)
             self.assertIsNone(app.session_state['champion'])
 
     def test_failed_save_retry_uses_same_game_id(self):
         with patch('database.get_bosses', return_value=BOSSES[:2]), patch('database.save_result', side_effect=[database.DatabaseError('retry'), None]) as save, patch('database.get_rankings', return_value=RANKINGS):
             app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / 'streamlit_app.py')).run()
-            app.button[1].click().run()
+            app.button[2].click().run()
             self.assertFalse(app.session_state['saved'])
-            app.button[1].click().run()
+            app.button[2].click().run()
             self.assertTrue(app.session_state['saved'])
             self.assertEqual(save.call_args_list[0], save.call_args_list[1])
 
@@ -44,7 +44,7 @@ class IntegrationTests(unittest.TestCase):
         with patch('database.get_bosses', return_value=BOSSES[:5]), patch('database.save_result'), patch('database.get_rankings', return_value=RANKINGS):
             app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / 'streamlit_app.py')).run()
             for _ in range(4):
-                app.button[1].click().run()
+                app.button[2].click().run()
             self.assertTrue(app.session_state['saved'])
             self.assertFalse(app.exception)
         with patch('database.get_bosses', side_effect=database.DatabaseError('offline')):

@@ -9,6 +9,16 @@ from admin_upload import create_item, prepare_image
 from streamlit.testing.v1 import AppTest
 
 class AdminTests(unittest.TestCase):
+    def test_statistics_without_starting_game(self):
+        with patch('database.get_rankings', return_value=[]), patch('database.get_bosses') as candidates, patch('database.save_result') as save:
+            app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / 'streamlit_app.py'))
+            app.session_state['stats_open'] = True
+            app.run()
+            self.assertFalse(app.exception)
+            self.assertTrue(any('ranking-chart' in m.value for m in app.markdown))
+            candidates.assert_not_called()
+            save.assert_not_called()
+
     def test_upload_and_insert(self):
         data = io.BytesIO()
         Image.new('RGB', (10, 10)).save(data, format='PNG')

@@ -42,13 +42,33 @@ def select_card(side):
 
 
 def toggle_admin():
+    st.session_state.stats_open = False
     st.session_state.admin_open = not st.session_state.get('admin_open', False)
 
 
-_, navigation = st.columns([4, 1])
+def toggle_stats():
+    st.session_state.admin_open = False
+    st.session_state.stats_open = not st.session_state.get('stats_open', False)
+
+
+_, navigation, stats_navigation = st.columns([3, 1, 1])
 with navigation:
     st.button('월드컵으로' if st.session_state.get('admin_open') else '관리자',
               key='admin_navigation', on_click=toggle_admin)
+with stats_navigation:
+    st.button('월드컵으로' if st.session_state.get('stats_open') else '통계',
+              key='stats_navigation', on_click=toggle_stats)
+if st.session_state.get('stats_open'):
+    st.title('전체 우승 통계')
+    try:
+        rankings = get_rankings()
+        st.metric('누적 완료 게임', sum(row['win_count'] for row in rankings))
+        st.caption('우승 횟수 순 · 막대 길이는 최다 우승 횟수 기준 · 비율은 전체 완료 게임 기준')
+        st.markdown(ranking_chart(rankings), unsafe_allow_html=True)
+    except DatabaseError as exc:
+        st.error(str(exc))
+    st.button('통계 새로고침')
+    st.stop()
 if st.session_state.get('admin_open'):
     show_admin()
     st.stop()

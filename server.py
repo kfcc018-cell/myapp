@@ -36,7 +36,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split('?', 1)[0]
-        if path in ('/', '/index.html', '/app.js', '/stats.css', '/cards.css', '/admin.html', '/admin.js'):
+        if path in ('/', '/index.html', '/app.js', '/stats.css', '/cards.css', '/admin.html', '/admin.js', '/statistics.html', '/statistics.js'):
             filename = path.lstrip('/') or 'index.html'
             body = (ROOT / filename).read_bytes()
             self.send_response(200)
