@@ -6,6 +6,7 @@ import streamlit as st
 from database import DatabaseError, get_bosses, get_rankings, save_result
 from ranking_chart import ranking_chart
 from boss_card import boss_card
+from admin_page import show_admin
 
 st.set_page_config(page_title='최악의 직장상사 월드컵', page_icon='🏆', layout='centered')
 
@@ -39,6 +40,18 @@ def select_card(side):
     if st.session_state.get('pending') is None:
         st.session_state.pending = side
 
+
+def toggle_admin():
+    st.session_state.admin_open = not st.session_state.get('admin_open', False)
+
+
+_, navigation = st.columns([4, 1])
+with navigation:
+    st.button('월드컵으로' if st.session_state.get('admin_open') else '관리자',
+              key='admin_navigation', on_click=toggle_admin)
+if st.session_state.get('admin_open'):
+    show_admin()
+    st.stop()
 
 st.caption('OFFICE WORLD CUP')
 st.title('최악의 직장상사 월드컵')

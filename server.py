@@ -5,8 +5,11 @@ from uuid import uuid4
 import json
 import random
 import time
+import base64
+import binascii
 
 from database import DatabaseError, get_bosses, get_rankings, save_result
+from admin_upload import create_item
 
 ROOT = Path(__file__).resolve().parent
 GAMES = {}
@@ -33,11 +36,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split('?', 1)[0]
-        if path in ('/', '/index.html', '/app.js', '/stats.css', '/cards.css'):
+        if path in ('/', '/index.html', '/app.js', '/stats.css', '/cards.css', '/admin.html', '/admin.js'):
             filename = path.lstrip('/') or 'index.html'
             body = (ROOT / filename).read_bytes()
             self.send_response(200)
-            content_type = 'text/css' if path.endswith('.css') else 'text/javascript' if path == '/app.js' else 'text/html'
+            content_type = 'text/css' if path.endswith('.css') else 'text/javascript' if path.endswith('.js') else 'text/html'
             self.send_header('Content-Type', content_type + '; charset=utf-8')
             self.send_header('Content-Length', str(len(body)))
             self.end_headers()
@@ -53,11 +56,24 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             length = int(self.headers.get('Content-Length', '0'))
-            if not 0 < length <= 4096:
+            limit = 7 * 1024 * 1024 if self.path == '/api/items' else 4096
+            if not 0 < length <= limit:
                 raise ValueError('잘못된 요청입니다.')
             data = json.loads(self.rfile.read(length))
             if not isinstance(data, dict):
                 raise ValueError('잘못된 요청입니다.')
+            if self.path == '/api/items':
+                try:
+                    content = data.get('content', '')
+                    if not isinstance(content, str):
+                        raise ValueError('항목 설명을 입력해주세요.')
+                    photo = base64.b64decode(data.get('photo', ''), validate=True)
+                    create_item(content, photo)
+                except (ValueError, binascii.Error) as exc:
+                    self.reply({'error': str(exc)}, 400)
+                    return
+                self.reply({'success': True}, 201)
+                return
             with LOCK:
                 if self.path == '/api/game':
                     now = time.monotonic()
