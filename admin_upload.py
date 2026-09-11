@@ -14,6 +14,23 @@ BUCKET = 'boss-worldcup-images'
 MAX_BYTES = 5 * 1024 * 1024
 
 
+def storage_error(exc):
+    if not hasattr(exc, 'storage_detail'):
+        try:
+            detail = json.loads(exc.read())
+            exc.storage_detail = detail if isinstance(detail, dict) else {}
+        except (ValueError, OSError):
+            exc.storage_detail = {}
+    return exc.storage_detail
+
+
+def missing_bucket(exc):
+    detail = storage_error(exc)
+    return exc.code == 404 or (exc.code == 400 and (
+        detail.get('code') == 'NoSuchBucket' or
+        detail.get('message') == 'Bucket not found' or detail.get('error') == 'Bucket not found'))
+
+
 def prepare_image(raw):
     if not raw or len(raw) > MAX_BYTES:
         raise ValueError('사진은 5MB 이하로 선택해주세요.')
@@ -61,27 +78,36 @@ def create_item(content, raw, item_id=None):
             raise DatabaseError('수정하지 못했습니다.') from exc
     photo = prepare_image(raw)
     filename = str(uuid4()) + '.jpg'
+    stage = '사진 저장소 확인'
     try:
         try:
             storage('bucket/' + BUCKET)
         except HTTPError as exc:
-            if exc.code != 404:
+            if not missing_bucket(exc):
                 raise
+            stage = '사진 저장소 생성'
             try:
                 storage('bucket', 'POST', json.dumps({'id': BUCKET, 'name': BUCKET, 'public': True,
                         'file_size_limit': MAX_BYTES, 'allowed_mime_types': ['image/jpeg']}).encode())
             except HTTPError as conflict:
-                if conflict.code != 409:
+                detail = storage_error(conflict)
+                if conflict.code != 409 and detail.get('code') not in ('BucketAlreadyExists', 'ResourceAlreadyExists') and detail.get('message') != 'The resource already exists':
                     raise
+                storage('bucket/' + BUCKET)
+        stage = '사진 업로드'
         storage('object/' + BUCKET + '/' + filename, 'POST', photo, 'image/jpeg')
         url, _ = settings()
         payload = {'content': content, 'img_filename': url + '/storage/v1/object/public/' + BUCKET + '/' + filename}
+        stage = '항목 저장'
         if item_id is None:
             request('boss_worldcup_items', payload)
         else:
             request(f'boss_worldcup_items?id=eq.{item_id}&deleted_at=is.null', payload, method='PATCH')
-    except (HTTPError, URLError, TimeoutError) as exc:
-        raise DatabaseError('등록하지 못했습니다. 잠시 후 다시 시도해주세요.') from exc
+    except HTTPError as exc:
+        hint = ' 서버용 Supabase 키와 권한을 확인해주세요.' if exc.code in (401, 403) else ' 다시 시도해주세요.'
+        raise DatabaseError(f'{stage} 실패 (HTTP {exc.code}).{hint}') from exc
+    except (URLError, TimeoutError) as exc:
+        raise DatabaseError(f'{stage} 중 연결이 끊겼습니다. 다시 시도해주세요.') from exc
 
 
 def valid_id(item_id):

@@ -9,6 +9,28 @@ from admin_upload import create_item, prepare_image
 from streamlit.testing.v1 import AppTest
 
 class AdminTests(unittest.TestCase):
+    def test_missing_bucket_400_creates_bucket(self):
+        from urllib.error import HTTPError
+        data = io.BytesIO()
+        Image.new('RGB', (10, 10)).save(data, format='PNG')
+        missing = HTTPError('https://test', 400, 'Bad Request', {}, io.BytesIO(b'{"code":"NoSuchBucket","message":"Bucket not found"}'))
+        with patch('admin_upload.storage', side_effect=[missing, b'{}', b'{}']) as files, patch('admin_upload.settings', return_value=('https://test.supabase.co', 'secret')), patch('admin_upload.request') as db:
+            create_item('New item', data.getvalue())
+            self.assertEqual(files.call_args_list[1].args[:2], ('bucket', 'POST'))
+            db.assert_called_once()
+
+    def test_permission_error_does_not_create_bucket(self):
+        from urllib.error import HTTPError
+        from database import DatabaseError
+        data = io.BytesIO()
+        Image.new('RGB', (10, 10)).save(data, format='PNG')
+        denied = HTTPError('https://test', 403, 'Forbidden', {}, io.BytesIO(b'{}'))
+        with patch('admin_upload.storage', side_effect=denied) as files, patch('admin_upload.request') as db:
+            with self.assertRaises(DatabaseError):
+                create_item('New item', data.getvalue())
+            files.assert_called_once()
+            db.assert_not_called()
+
     def test_edit_without_photo_and_soft_delete(self):
         from admin_upload import delete_item
         with patch('admin_upload.request', return_value=[{'id': 1}]) as db, patch('admin_upload.storage') as files:
