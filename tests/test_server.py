@@ -1,4 +1,4 @@
-﻿import sys
+import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import json
@@ -24,6 +24,7 @@ class ServerTests(unittest.TestCase):
                     return json.load(r)
             try:
                 game = post('/api/game', {})
+                self.assertEqual(game['total'], 8)
                 with self.assertRaises(HTTPError) as error:
                     post('/api/result', {'game_id': game['game_id']})
                 self.assertEqual(error.exception.code, 400)
@@ -31,7 +32,7 @@ class ServerTests(unittest.TestCase):
                 game = post('/api/choose', payload)
                 stale = post('/api/choose', payload)
                 self.assertEqual(game, stale)
-                for _ in range(30):
+                for _ in range(6):
                     game = post('/api/choose', {'game_id': game['game_id'], 'size': game['size'], 'match': game['match'], 'winner_id': game['pair'][0]['id']})
                 self.assertIsNotNone(game['champion'])
                 post('/api/result', {'game_id': game['game_id']})

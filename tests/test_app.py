@@ -1,4 +1,4 @@
-﻿import sys
+import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import unittest
@@ -17,7 +17,9 @@ class IntegrationTests(unittest.TestCase):
         with patch('database.get_bosses', return_value=BOSSES), patch('database.save_result') as save, patch('database.get_rankings', return_value=RANKINGS):
             app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / 'streamlit_app.py')).run()
             game_id = app.session_state['game_id']
-            for _ in range(31):
+            self.assertEqual(len(app.session_state['current']), 8)
+            self.assertEqual(len({b['id'] for b in app.session_state['current']}), 8)
+            for _ in range(7):
                 app.button[0].click().run()
                 self.assertFalse(app.exception)
             self.assertTrue(app.session_state['saved'])

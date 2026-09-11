@@ -6,7 +6,15 @@
 <title>최악의 직장상사 월드컵</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#11121a;color:#f4f4f8;font-family:system-ui,sans-serif}main{max-width:860px;margin:0 auto;padding:65px 24px;text-align:center}.tag{color:#b4a0ff;font-size:13px;font-weight:700;letter-spacing:2px}h1{font-size:clamp(26px,5vw,40px);letter-spacing:-1.5px;margin:16px 0}p{color:#a4a5b5;line-height:1.7}.round{display:inline-block;background:#29243f;color:#cbbdff;border-radius:24px;padding:9px 19px;margin:22px 0}.choices{display:grid;grid-template-columns:1fr 42px 1fr;align-items:center;gap:12px}.choice{font:inherit;color:inherit;background:#1d1e2a;border:1px solid #353647;border-radius:20px;padding:38px 22px;min-height:270px;cursor:pointer;transition:background .15s,transform .15s}.choice:hover{background:#2b2540;transform:translateY(-4px);border-color:#a48aff}button:focus-visible{outline:3px solid #c2aaff;outline-offset:4px}.emoji{font-size:58px;display:block;margin-bottom:22px}.name{display:block;font-size:21px;font-weight:750}.description{display:block;color:#aeb0c2;font-size:14px;line-height:1.8;margin-top:15px}.vs{color:#77738e;font-size:14px;font-weight:800}.primary{background:#ad92ff;color:#171225;border:0;border-radius:12px;padding:14px 25px;font:inherit;font-weight:700;cursor:pointer;margin-top:20px}.winner{background:#1d1e2a;border:1px solid #a48aff;border-radius:20px;padding:35px;max-width:480px;margin:0 auto}.winner .emoji{font-size:70px}footer{font-size:12px;color:#686a7f;margin-top:40px}[hidden]{display:none!important}@media(max-width:540px){main{padding:35px 18px}.choices{grid-template-columns:1fr;gap:10px}.choice{min-height:175px;padding:23px 16px}.emoji{font-size:38px;margin-bottom:10px}.name{font-size:19px}.description{margin-top:9px}.round{margin:12px 0 20px}}
-</style>
+.choices{transition:grid-template-columns .4s ease}
+.choices.picked-left{grid-template-columns:1.6fr 42px .4fr}
+.choices.picked-right{grid-template-columns:.4fr 42px 1.6fr}
+.choice{transition:background .3s,transform .3s,opacity .3s}
+.picked-left #left,.picked-right #right{background:#382958;border-color:#ad92ff;box-shadow:0 0 24px #ad92ff33;transform:none}
+.picked-left #right,.picked-right #left{opacity:.35;transform:scale(.94)}
+.selection-badge{display:block;color:#cfbdff;font-weight:700;margin-top:18px}
+@media(max-width:540px){.choices.picked-left,.choices.picked-right{grid-template-columns:1fr}.picked-left #left,.picked-right #right{transform:scale(1.035)}}
+@media(prefers-reduced-motion:reduce){.choices,.choice{transition:none}}</style>
 </head>
 <body><main>
 <div class="tag">OFFICE WORLD CUP</div>

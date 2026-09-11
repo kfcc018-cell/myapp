@@ -1,6 +1,6 @@
 ﻿# 최악의 직장상사 월드컵
 
-Supabase의 `boss_worldcup_items` 후보 전체로 진행하며, 우승 결과를 `boss_worldcup_results`에 저장하고 `boss_worldcup_rankings`의 우승 횟수·비율을 보여줍니다. 현재 후보는 32개입니다. 홀수 후보는 무작위 대진 마지막 후보가 부전승합니다.
+Supabase의 `boss_worldcup_items` 후보 중 무작위 8명을 뽑아 총 7경기로 진행하며, 우승 결과를 `boss_worldcup_results`에 저장하고 `boss_worldcup_rankings`의 우승 횟수·비율을 보여줍니다. 현재 후보는 32개입니다. 홀수 후보는 무작위 대진 마지막 후보가 부전승합니다.
 
 ## Streamlit Cloud
 

@@ -71,15 +71,26 @@ async function select(side) {
   busy = true;
   $('left').disabled = $('right').disabled = true;
   $('error').hidden = true;
+  $('choices').classList.add(side === 0 ? 'picked-left' : 'picked-right');
+  const selected = side === 0 ? $('left') : $('right');
+  const badge = document.createElement('span');
+  badge.className = 'selection-badge'; badge.textContent = '✓ 선택 완료';
+  selected.append(badge);
   try {
-    game = await api('/api/choose', {game_id: game.game_id, winner_id: game.pair[side].id,
-      size: game.size, match: game.match});
+    const [next] = await Promise.all([api('/api/choose', {game_id: game.game_id, winner_id: game.pair[side].id,
+      size: game.size, match: game.match}), new Promise(resolve => setTimeout(resolve, 500))]);
+    game = next;
+    $('choices').classList.remove('picked-left', 'picked-right');
     render();
     if (game.champion) await statistics();
   } catch (error) {
     $('errorText').textContent = error.message;
     $('error').hidden = false;
-  } finally { busy = false; $('left').disabled = $('right').disabled = false; }
+  } finally {
+    $('choices').classList.remove('picked-left', 'picked-right');
+    badge.remove();
+    busy = false; $('left').disabled = $('right').disabled = false;
+  }
 }
 $('left').onclick = () => select(0);
 $('right').onclick = () => select(1);

@@ -1,4 +1,4 @@
-﻿from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Lock
 from uuid import uuid4
@@ -66,6 +66,7 @@ class Handler(BaseHTTPRequestHandler):
                         self.reply({'error': '잠시 후 다시 시도해주세요.'}, 503)
                         return
                     candidates = get_bosses()
+                    candidates = random.sample(candidates, min(8, len(candidates)))
                     game = {'id': str(uuid4()), 'current': random.sample(candidates, len(candidates)),
                             'winners': [], 'match': 0, 'total': len(candidates),
                             'champion': None, 'saved': False, 'created': now}
