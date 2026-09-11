@@ -5,6 +5,7 @@ from uuid import uuid4
 import streamlit as st
 from database import DatabaseError, get_bosses, get_rankings, save_result
 from ranking_chart import ranking_chart
+from boss_card import boss_card
 
 st.set_page_config(page_title='최악의 직장상사 월드컵', page_icon='🏆', layout='centered')
 
@@ -52,8 +53,7 @@ s = st.session_state
 if s.champion:
     st.subheader('🏆 최악의 상사 우승')
     with st.container(border=True):
-        st.title(s.champion['emoji'])
-        st.subheader(s.champion['name'])
+        st.markdown(boss_card(s.champion), unsafe_allow_html=True)
     if not s.saved:
         try:
             save_result(s.game_id, s.champion['id'])
@@ -97,8 +97,7 @@ else:
             boss = s.current[s.match * 2 + side]
             with column:
                 with st.container(border=True):
-                    st.title(boss['emoji'])
-                    st.subheader(boss['name'])
+                    st.markdown(boss_card(boss), unsafe_allow_html=True)
                     st.button('✓ 선택 완료' if pending == side else '이 상사가 더 최악',
                               key=f'pick_{size}_{s.match}_{side}', disabled=pending is not None,
                               on_click=select_card, args=(side,), use_container_width=True)

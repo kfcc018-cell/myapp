@@ -1,0 +1,7 @@
+.boss-card{width:100%;min-width:0}
+.boss-image{display:block;width:100%;height:220px;object-fit:cover;border-radius:12px;background:#292a39;color:#b9b6ca;font-size:14px}
+.missing-image{display:flex;align-items:center;justify-content:center}
+.boss-name{height:100px;overflow-y:auto;overflow-wrap:anywhere;padding:14px 0 0;font-size:19px;line-height:1.5;font-weight:700;color:#f4f4f8}
+.choice{height:410px;min-height:410px;padding:18px;width:100%;min-width:0;position:relative}
+.choice .selection-badge{position:absolute;bottom:12px;left:0;right:0;margin:0}
+.winner{width:100%;max-width:400px;padding:18px}

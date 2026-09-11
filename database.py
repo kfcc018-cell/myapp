@@ -3,6 +3,7 @@ import json
 import os
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from urllib.parse import urlsplit
 from uuid import UUID
 
 DEFAULT_URL = 'https://uvkdwnedqxgczeterdef.supabase.co'
@@ -46,14 +47,24 @@ def request(path, data=None):
         raise DatabaseError('데이터베이스에 연결하지 못했습니다. 다시 시도해주세요.') from exc
 
 
+def image_url(value):
+    value = str(value or '').strip()
+    try:
+        parsed = urlsplit(value)
+        return value if parsed.scheme in ('https', 'http') and parsed.hostname else ''
+    except ValueError:
+        return ''
+
+
 def get_bosses():
     try:
-        rows = request('boss_worldcup_items?select=id,content&order=id')
+        rows = request('boss_worldcup_items?select=id,content,img_filename&order=id')
     except HTTPError as exc:
         raise DatabaseError('후보를 불러오지 못했습니다. 서버 연결 설정을 확인해주세요.') from exc
     if len(rows) < 2:
         raise DatabaseError('후보가 2개 이상 필요합니다.')
-    return [{'id': row['id'], 'name': row['content'], 'emoji': '👔', 'description': ''} for row in rows]
+    return [{'id': row['id'], 'name': row['content'], 'image_url': image_url(row.get('img_filename')),
+             'emoji': '👔', 'description': ''} for row in rows]
 
 
 def save_result(game_id, winner_id):

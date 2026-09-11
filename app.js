@@ -3,10 +3,23 @@ let game = null;
 let busy = false;
 function card(element, boss) {
   element.replaceChildren();
-  for (const [cls, text] of [['emoji', boss.emoji], ['name', boss.name]]) {
-    const span = document.createElement('span');
-    span.className = cls; span.textContent = text; element.append(span);
+  if (boss.image_url && /^https?:\/\//i.test(boss.image_url)) {
+    const img = document.createElement('img');
+    img.className = 'boss-image'; img.src = boss.image_url; img.alt = boss.name;
+    img.referrerPolicy = 'no-referrer';
+    img.onerror = () => {
+      const fallback = document.createElement('span');
+      fallback.className = 'boss-image missing-image'; fallback.textContent = '이미지를 불러올 수 없습니다';
+      img.replaceWith(fallback);
+    };
+    element.append(img);
+  } else {
+    const fallback = document.createElement('span');
+    fallback.className = 'boss-image missing-image'; fallback.textContent = '이미지 없음';
+    element.append(fallback);
   }
+  const title = document.createElement('div'); title.className = 'boss-name';
+  title.textContent = boss.name; element.append(title);
 }
 async function api(path, body) {
   const response = await fetch(path, body === undefined ? {} : {
