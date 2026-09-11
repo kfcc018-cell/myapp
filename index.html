@@ -8,83 +8,21 @@
 *{box-sizing:border-box}body{margin:0;background:#11121a;color:#f4f4f8;font-family:system-ui,sans-serif}main{max-width:860px;margin:0 auto;padding:65px 24px;text-align:center}.tag{color:#b4a0ff;font-size:13px;font-weight:700;letter-spacing:2px}h1{font-size:clamp(26px,5vw,40px);letter-spacing:-1.5px;margin:16px 0}p{color:#a4a5b5;line-height:1.7}.round{display:inline-block;background:#29243f;color:#cbbdff;border-radius:24px;padding:9px 19px;margin:22px 0}.choices{display:grid;grid-template-columns:1fr 42px 1fr;align-items:center;gap:12px}.choice{font:inherit;color:inherit;background:#1d1e2a;border:1px solid #353647;border-radius:20px;padding:38px 22px;min-height:270px;cursor:pointer;transition:background .15s,transform .15s}.choice:hover{background:#2b2540;transform:translateY(-4px);border-color:#a48aff}button:focus-visible{outline:3px solid #c2aaff;outline-offset:4px}.emoji{font-size:58px;display:block;margin-bottom:22px}.name{display:block;font-size:21px;font-weight:750}.description{display:block;color:#aeb0c2;font-size:14px;line-height:1.8;margin-top:15px}.vs{color:#77738e;font-size:14px;font-weight:800}.primary{background:#ad92ff;color:#171225;border:0;border-radius:12px;padding:14px 25px;font:inherit;font-weight:700;cursor:pointer;margin-top:20px}.winner{background:#1d1e2a;border:1px solid #a48aff;border-radius:20px;padding:35px;max-width:480px;margin:0 auto}.winner .emoji{font-size:70px}footer{font-size:12px;color:#686a7f;margin-top:40px}[hidden]{display:none!important}@media(max-width:540px){main{padding:35px 18px}.choices{grid-template-columns:1fr;gap:10px}.choice{min-height:175px;padding:23px 16px}.emoji{font-size:38px;margin-bottom:10px}.name{font-size:19px}.description{margin-top:9px}.round{margin:12px 0 20px}}
 </style>
 </head>
-<body>
-<main>
+<body><main>
 <div class="tag">OFFICE WORLD CUP</div>
 <h1>최악의 직장상사 월드컵</h1>
-<p>같이 일하기 더 싫은 상사를 골라주세요.<br>8명 중 단 한 명, 최악의 상사를 찾아봅니다.</p>
+<p id="subtitle">후보를 불러오는 중…</p>
 <div id="round" class="round" aria-live="polite">준비 중</div>
 <div id="choices" class="choices" hidden>
 <button id="left" class="choice" type="button"></button><span class="vs">VS</span><button id="right" class="choice" type="button"></button>
 </div>
-<section id="result" hidden aria-label="최종 결과"><div class="winner" id="winner"></div><button id="restart" class="primary">다시 하기 ↻</button></section>
-<div id="error" hidden><p>후보를 불러오지 못했어요. 서버가 실행 중인지 확인해주세요.</p><button id="retry" class="primary">다시 시도</button></div>
-<footer>가상의 상사 유형으로 즐기는 월드컵 · 총 7번의 선택</footer>
-</main>
-<script>
-const $ = id => document.getElementById(id);
-let candidates = [], current = [], winners = [], match = 0;
-function card(element, boss) {
-  element.replaceChildren();
-  for (const [className, value] of [['emoji',boss.emoji],['name',boss.name],['description',boss.description]]) {
-    const span = document.createElement('span');
-    span.className = className;
-    span.textContent = value;
-    element.append(span);
-  }
-}
-function start() {
-  current = [...candidates];
-  for (let i = current.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [current[i], current[j]] = [current[j], current[i]];
-  }
-  winners = []; match = 0;
-  $('result').hidden = true;
-  $('choices').hidden = false;
-  render();
-}
-function render() {
-  $('round').textContent = (current.length === 2 ? '결승' : current.length + '강') + ' · ' + (match + 1) + ' / ' + current.length / 2;
-  card($('left'), current[match * 2]);
-  card($('right'), current[match * 2 + 1]);
-}
-function select(side) {
-  winners.push(current[match * 2 + side]);
-  match++;
-  if (match === current.length / 2) {
-    if (winners.length === 1) {
-      $('choices').hidden = true;
-      $('round').textContent = '🏆 최악의 상사 우승';
-      card($('winner'), winners[0]);
-      $('result').hidden = false;
-      $('restart').focus();
-      return;
-    }
-    current = winners; winners = []; match = 0;
-  }
-  render();
-}
-async function load() {
-  $('error').hidden = true;
-  $('round').textContent = '준비 중';
-  try {
-    const response = await fetch('/api/bosses');
-    if (!response.ok) throw new Error('후보 요청 실패');
-    const data = await response.json();
-    if (!Array.isArray(data) || data.length !== 8 || !data.every(b => b && ['name','description','emoji'].every(k => typeof b[k] === 'string'))) throw new Error('후보 형식 오류');
-    candidates = data;
-    start();
-  } catch {
-    $('round').textContent = '연결 실패';
-    $('error').hidden = false;
-  }
-}
-$('left').onclick = () => select(0);
-$('right').onclick = () => select(1);
-$('restart').onclick = start;
-$('retry').onclick = load;
-load();
-</script>
-</body>
-</html>
+<section id="result" hidden aria-label="최종 결과">
+<div class="winner" id="winner"></div>
+<h2>전체 우승 통계</h2><p id="statsStatus" role="status"></p>
+<div id="stats" hidden style="overflow-x:auto"><table style="width:100%;text-align:left;line-height:2"><thead><tr><th>상사 유형</th><th>우승 횟수</th><th>우승 비율</th></tr></thead><tbody id="statsBody"></tbody></table></div>
+<button id="refresh" class="primary">저장 재시도 / 통계 새로고침</button>
+<button id="restart" class="primary">다시 하기 ↻</button>
+</section>
+<div id="error" hidden><p id="errorText" role="alert"></p><button id="retry" class="primary">새 게임 시작</button></div>
+<footer id="footnote"></footer>
+</main><script src="/app.js"></script></body></html>

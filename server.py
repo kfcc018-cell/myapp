@@ -1,42 +1,120 @@
 ﻿from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from threading import Lock
+from uuid import uuid4
 import json
+import random
+import time
+
+from database import DatabaseError, get_bosses, get_rankings, save_result
 
 ROOT = Path(__file__).resolve().parent
-BOSSES = [
-    {"id": 1, "emoji": "🏆", "name": "공 가로채는 상사", "description": "일은 내가 했는데, 보고할 땐 전부 자기 성과."},
-    {"id": 2, "emoji": "📱", "name": "퇴근 후 연락하는 상사", "description": "밤 11시에도 '잠깐 통화 가능하지?'"},
-    {"id": 3, "emoji": "🌪️", "name": "말 바꾸는 상사", "description": "어제는 A라더니 오늘은 '왜 B로 안 했어?'"},
-    {"id": 4, "emoji": "📢", "name": "공개 망신 주는 상사", "description": "작은 실수도 모두가 보는 자리에서 크게 지적."},
-    {"id": 5, "emoji": "👀", "name": "감시하는 상사", "description": "자리 비운 5분도 어디 다녀왔는지 확인."},
-    {"id": 6, "emoji": "🫥", "name": "책임 떠넘기는 상사", "description": "문제가 생기면 '그건 담당자가 한 일이죠.'"},
-    {"id": 7, "emoji": "🍻", "name": "회식 강요하는 상사", "description": "자율 참석이라면서 불참하면 다음 날 면담."},
-    {"id": 8, "emoji": "⏰", "name": "퇴근 직전 일 주는 상사", "description": "하루 종일 조용하다가 5시 59분에 '오늘까지.'"},
-]
+GAMES = {}
+LOCK = Lock()
+
+
+def snapshot(game):
+    size = len(game['current'])
+    pair = game['current'][game['match'] * 2:game['match'] * 2 + 2]
+    return {'game_id': game['id'], 'pair': pair, 'size': size,
+            'match': game['match'], 'total': game['total'],
+            'champion': game['champion'], 'saved': game['saved']}
 
 
 class Handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        path = self.path.split('?', 1)[0]
-        if path == '/api/bosses':
-            body = json.dumps(BOSSES, ensure_ascii=False).encode('utf-8')
-            content_type = 'application/json; charset=utf-8'
-        elif path in ('/', '/index.html'):
-            body = (ROOT / 'index.html').read_bytes()
-            content_type = 'text/html; charset=utf-8'
-        else:
-            self.send_error(404)
-            return
-        self.send_response(200)
-        self.send_header('Content-Type', content_type)
+    def reply(self, data, status=200):
+        body = json.dumps(data, ensure_ascii=False).encode('utf-8')
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Content-Length', str(len(body)))
+        self.send_header('Cache-Control', 'no-store')
         self.end_headers()
         self.wfile.write(body)
 
+    def do_GET(self):
+        path = self.path.split('?', 1)[0]
+        if path in ('/', '/index.html', '/app.js'):
+            body = (ROOT / ('app.js' if path == '/app.js' else 'index.html')).read_bytes()
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/javascript; charset=utf-8' if path == '/app.js' else 'text/html; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        elif path == '/api/rankings':
+            try:
+                self.reply(get_rankings())
+            except DatabaseError as exc:
+                self.reply({'error': str(exc)}, 503)
+        else:
+            self.send_error(404)
+
+    def do_POST(self):
+        try:
+            length = int(self.headers.get('Content-Length', '0'))
+            if not 0 < length <= 4096:
+                raise ValueError('잘못된 요청입니다.')
+            data = json.loads(self.rfile.read(length))
+            if not isinstance(data, dict):
+                raise ValueError('잘못된 요청입니다.')
+            with LOCK:
+                if self.path == '/api/game':
+                    now = time.monotonic()
+                    for key in list(GAMES):
+                        if now - GAMES[key]['created'] > 86400:
+                            del GAMES[key]
+                    if len(GAMES) >= 1000:
+                        self.reply({'error': '잠시 후 다시 시도해주세요.'}, 503)
+                        return
+                    candidates = get_bosses()
+                    game = {'id': str(uuid4()), 'current': random.sample(candidates, len(candidates)),
+                            'winners': [], 'match': 0, 'total': len(candidates),
+                            'champion': None, 'saved': False, 'created': now}
+                    GAMES[game['id']] = game
+                    self.reply(snapshot(game))
+                elif self.path in ('/api/choose', '/api/result'):
+                    game = GAMES.get(str(data.get('game_id', '')))
+                    if not game:
+                        self.reply({'error': '게임이 만료됐습니다. 새 게임을 시작해주세요.'}, 410)
+                        return
+                    if self.path == '/api/choose':
+                        if game['champion']:
+                            self.reply(snapshot(game))
+                            return
+                        pair = game['current'][game['match'] * 2:game['match'] * 2 + 2]
+                        # Stale/double requests return current state without recording another choice.
+                        if data.get('size') != len(game['current']) or data.get('match') != game['match']:
+                            self.reply(snapshot(game))
+                            return
+                        boss = next((b for b in pair if b['id'] == data.get('winner_id')), None)
+                        if not boss:
+                            raise ValueError('현재 대진의 후보를 선택해주세요.')
+                        game['winners'].append(boss)
+                        game['match'] += 1
+                        if game['match'] == len(game['current']) // 2:
+                            if len(game['current']) % 2:
+                                game['winners'].append(game['current'][-1])
+                            if len(game['winners']) == 1:
+                                game['champion'] = game['winners'][0]
+                            else:
+                                game['current'], game['winners'], game['match'] = game['winners'], [], 0
+                        self.reply(snapshot(game))
+                    else:
+                        if not game['champion']:
+                            raise ValueError('게임을 먼저 완료해주세요.')
+                        if not game['saved']:
+                            save_result(game['id'], game['champion']['id'])
+                            game['saved'] = True
+                        self.reply({'saved': True})
+                else:
+                    self.send_error(404)
+        except (ValueError, TypeError, UnicodeError):
+            self.reply({'error': '요청이 올바르지 않습니다.'}, 400)
+        except DatabaseError as exc:
+            self.reply({'error': str(exc)}, 503)
+
 
 if __name__ == '__main__':
-    address = ('127.0.0.1', 8000)
-    server = ThreadingHTTPServer(address, Handler)
+    server = ThreadingHTTPServer(('127.0.0.1', 8000), Handler)
     print('최악의 직장상사 월드컵: http://127.0.0.1:8000', flush=True)
     try:
         server.serve_forever()
