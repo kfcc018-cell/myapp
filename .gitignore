@@ -1,0 +1,7 @@
+.python/
+python-runtime.zip
+__pycache__/
+*.pyc
+*.log
+.env
+.env.*
